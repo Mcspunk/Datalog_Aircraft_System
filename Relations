@@ -1,0 +1,28 @@
+Airline{
+  name: name of the airline
+  flight-legs: which connections that the airline manages
+}
+
+Airport{
+  IATA code: UID for an aiport,
+  Primary City: The major city which the aiport is associated too
+  Weahter: The weather at an airport {clear,cloudy,windy,thunderstorm}
+}
+
+Aircraft{
+  Reg nr: UID,
+  Model: Model of the plane,
+  Manufacturer,
+  Classification: Light/Heavy
+}
+
+Aircraft-Model{
+  set of seats,
+}
+
+
+Aircraft-Seat{
+  Class: Business/Economy
+  Seat-Nr: 27B
+  Seat-Type: Aisle,Window or Other,
+}

@@ -1,0 +1,80 @@
+parent("Lasse", "Carsten").
+parent("Lasse","Grethe").
+parent("Peter", "Carsten").
+parent("Heidi", "Carsten").
+parent("Peter", "Grethe").
+parent("Heidi", "Grethe").
+male("Carsten").
+male("Lasse").
+male("Peter").
+male("Verner").
+female("Heidi").
+female("Grethe").
+brother("Grethe","Verner").
+
+father(Child,Dad) :- parent(Child,Dad),
+                     male(Dad).
+mother(Child,Mom) :- parent(Child,Mom),
+                     female(Mom).
+
+brother(X,Y) :- parent(X,Z),
+                parent(Y,Z),
+                parent(X,H),
+                parent(Y,H),
+                male(Y), 
+                X!=Y.
+
+sister(X,Y) :- parent(X,Z),
+               parent(Y,Z),
+               parent(X,H),
+               parent(Y,H),
+               female(Y),
+               X!=Y.
+
+uncle(X,Y) :- male(Y),
+              brother(Z,Y),
+              parent(X,Z).
+
+aunt(X,Y) :-  female(Y),
+              sister(Z,Y),
+              parent(X,Z).
+
+
+coloredge("A","B","Blue").
+coloredge("B","C","Red").
+coloredge("C","D","Blue").
+
+bluePath(X,Y) :- coloredge(X,Y,"Blue").
+redPath(X,Y) :- coloredge(X,Y,"Red").
+
+colorPath(X,Y) :- bluePath(X,Y).
+colorPath(X,Y) :- redPath(X,Y).
+
+colorPath(X,Z) :- bluePath(X,Y),
+                  redPath(Y,Z).
+
+colorPath(X,Z) :- redPath(X,Y),
+                  bluePath(Y,Z).
+
+
+evenEdge("A","B").
+evenEdge("B","C").
+evenEdge("C","D").
+evenEdge("D","E").
+
+
+evenPath(X,Z) :- oddPath(X,Y),
+                 oddPath(Y,Z).
+
+evenPath(X,Z) :- evenPath(X,Y),
+                 evenPath(Y,Z).
+
+oddPath(X,Z) :- evenEdge(X,Z).
+
+oddPath(X,Z) :- evenPath(X,Y),evenEdge(Y,Z).
+
+
+
+
+
+

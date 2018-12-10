@@ -1,0 +1,67 @@
+aircraft("OY-JJO","Airbus A380", "Airbus", "Heavy").
+aircraft_model("Airbus A380","1A").
+seat("1A","Business","Aisle").
+country("Denmark").
+city("Copenhagen","Denmark").
+weather("Cloudy","Copenhagen").
+
+passenger(First_name,Last_name,Birthday) :-
+    passenger(First_name,Last_name,Birthday).
+
+blacklist(Banning_Country,Banned_Country) :-
+    blacklist(Banning_Country,Banned_Country),
+    country(Banning_Country),
+    country(Banned_Country),
+    Banning_Country!=Banned_Country.
+
+passport(From_country,P_firstname,P_lastname,P_birthday) :-
+    country(From_country),
+    passenger(P_firstname,P_lastname,P_birthday).
+
+city(Name,Country) :-
+    city(Name,Country),
+    country(Country).
+
+weather(Weather_type,In_city) :-
+    weather(Weather_type,In_city),
+    city(In_city,X).
+
+airport(IATA,City,Weather) :- 
+    city(City,County),
+    weather(Weather,City),
+    airport(IATA,City,Weather).
+
+airline(Name,From_IATA,To_IATA) :-
+    airport(From_IATA,X,Y),
+    airport(To_IATA,H,G),
+    airline(Name,From_IATA,To_IATA).
+
+flight_leg(From_IATA,To_IATA,Service_provider,Operator,Aircraft_reg_num) :- 
+    flight_leg(From,To,Service_provider,Operator,Aircraft_reg_num),
+    aircraft(Aircraft_reg_num,Some_model,Some_Manufactor,Some_classification),
+    airline(Service_provider,X,Y),
+    airline(Operator,From_IATA,To_IATA).
+
+route(From, Airline, To) :- flight_leg(From, To, Some_ServiceProvider, Airline, Some_aircraft).
+route(From, Airline, To) :-
+route(From, Airline, Stopover),
+flight_leg(Stopover, To, Some_ServiceProvider, Airline, Some_aircraft).
+
+aircraft(Reg_num,Model,Manufactor,Classification) :- 
+    aircraft(Reg_num,Model,Manufactor,Classification),
+    aircraft_model(Model,Aircraft_seat).
+
+aircraft_model(Model,Aircraft_seat) :- 
+    aircraft_model(Model,Aircraft_seat),
+    seat(Aircraft_seat,Seat_class,Seat_type).
+
+seat(Aircraft_seat,Seat_class,Seat_type) :-
+    seat(Aircraft_seat,Seat_class,Seat_type).
+
+reservation(Booking_code,P_firstname,P_lastname,P_birthday,From_IATA,To_IATA,Via_Airline,Seat_Num) :-
+    reservation(Booking_code,P_firstname,P_lastname,P_birthday,From_IATA,To_IATA,Via_Airline,Seat_Num),
+    passenger(P_firstname,P_lastname,P_birthday),
+    airline(Via_Airline,From_IATA,To_IATA),
+    airport(From_IATA,X,Y),
+    airport(To_IATA,G,H),
+    seat(Seat_Num,K,L).
