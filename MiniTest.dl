@@ -15,19 +15,15 @@ country("Denmark").
 country("Sweden").
 city("Stockholm","Sweden").
 city("Copenhagen","Denmark").
-weather("Cloudy","Copenhagen").
-weather("Windy","Stockholm").
 visa_agreement("Denmark","Sweden").
-passenger("Patrick","Alminde",22).
-passenger("Gry","Egelund",21).
-passport("Denmark","Patrick","Alminde",22).
-airline("Norwegian","CPH","STO").
 airport("CPH","Copenhagen","Cloudy").
 airport("STO","Stockholm","Windy").
-flight_leg("CPH","STO","Norwegian","Norwegian","OY-JJO").
+flight_leg("CPH","STO","Norwegian","OY-JdO").
+passport("Sweden","Patrick","Alminde",22).
+reservation("412","Patrick","Alminde",22,"CPH","STO","Norwegian","8A").
 
 passenger(First_name,Last_name,Birthday) :-
-    passenger(First_name,Last_name,Birthday).
+    reservation(Code,First_name,Last_name,Birthday,From,To,Via,Reg_num).
 
 blacklist(Banning_Country,Banned_Country) :-
     blacklist(Banning_Country,Banned_Country),
@@ -49,13 +45,8 @@ city(Name,Country) :-
     city(Name,Country),
     country(Country).
 
-weather(Weather_type,In_city) :-
-    weather(Weather_type,In_city),
-    city(In_city,X).
-
 airport(IATA,City,Weather) :- 
     city(City,County),
-    weather(Weather,City),
     airport(IATA,City,Weather).
 
 airline(Name,From_IATA,To_IATA) :-
@@ -63,16 +54,19 @@ airline(Name,From_IATA,To_IATA) :-
     airport(To_IATA,H,G),
     airline(Name,From_IATA,To_IATA).
 
-flight_leg(From_IATA,To_IATA,Service_provider,Operator,Aircraft_reg_num) :- 
-    flight_leg(From,To,Service_provider,Operator,Aircraft_reg_num),
+airline(Name,From_IATA,To_IATA) :-
+    airport(From_IATA,X,Y),
+    airport(To_IATA,H,G),
+    flight_leg(From_IATA,To_IATA,Name,Aircraft).
+
+flight_leg(From_IATA,To_IATA,Operator,Aircraft_reg_num) :- 
     aircraft(Aircraft_reg_num,Some_model,Some_Manufactor,Some_classification),
-    airline(Service_provider,X,Y),
     airline(Operator,From_IATA,To_IATA).
 
-route(From, Airline, To) :- flight_leg(From, To, Some_ServiceProvider, Airline, Some_aircraft).
+route(From, Airline, To) :- flight_leg(From, To, Airline, Some_aircraft).
 route(From, Airline, To) :-
 route(From, Airline, Stopover),
-flight_leg(Stopover, To, Some_ServiceProvider, Airline, Some_aircraft).
+flight_leg(Stopover, To, Airline, Some_aircraft).
 
 aircraft(Reg_num,Model,Manufactor,Classification) :- 
     aircraft(Reg_num,Model,Manufactor,Classification),
@@ -82,13 +76,25 @@ aircraft_model(Model,Aircraft_seat) :-
     aircraft_model(Model,Aircraft_seat),
     seat(Aircraft_seat,Seat_class,Seat_type).
 
-seat(Aircraft_seat,Seat_class,Seat_type) :-
-    seat(Aircraft_seat,Seat_class,Seat_type).
 
 reservation(Booking_code,P_firstname,P_lastname,P_birthday,From_IATA,To_IATA,Via_Airline,Seat_Num) :-
     reservation(Booking_code,P_firstname,P_lastname,P_birthday,From_IATA,To_IATA,Via_Airline,Seat_Num),
     passenger(P_firstname,P_lastname,P_birthday),
-    airline(Via_Airline,From_IATA,To_IATA),
-    airport(From_IATA,X,Y),
-    airport(To_IATA,G,H),
-    seat(Seat_Num,K,L).
+    flight_leg(From_IATA,To_IATA,Via_Airline,Aircraft_reg_num),
+    seat(Seat_Num,Class,Type).
+
+allowedAirport(AllowedAirport,P_firstname,P_lastname,P_birthday) :-
+    airport(AllowedAirport,City_Name,Weather),
+    passenger(P_firstname,P_lastname,P_birthday),
+    city(City_Name,Country),
+    passport(Country,P_firstname,P_lastname,P_birthday).
+
+allowedAirport(AllowedAirport,P_firstname,P_lastname,P_birthday) :-
+    airport(AllowedAirport,City_Name,Weather),
+    passenger(P_firstname,P_lastname,P_birthday),
+    city(City_Name,Country_Airport),
+    passport(Country_Pass,P_firstname,P_lastname,P_birthday),
+    visa_agreement(Country_Airport,Country_Pass).
+
+illegalReservation(P_firstname,P_lastname,P_birthday,NotAllowedIn) :-
+    
