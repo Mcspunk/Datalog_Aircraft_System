@@ -15,12 +15,11 @@ country("Denmark").
 country("Sweden").
 city("Stockholm","Sweden").
 city("Copenhagen","Denmark").
-visa_agreement("Denmark","Sweden").
 airport("CPH","Copenhagen","Cloudy").
 airport("STO","Stockholm","Windy").
 flight_leg("CPH","STO","Norwegian","OY-JdO").
-passport("Sweden","Patrick","Alminde",22).
-reservation("412","Patrick","Alminde",22,"CPH","STO","Norwegian","8A").
+reservation("412","Patrick","Alminde","18-05-96","CPH","STO","Norwegian","7A").
+reservation("512","Gry","Egelund","11-12-96","CPH","STO","Norwegian","8A").
 
 passenger(First_name,Last_name,Birthday) :-
     reservation(Code,First_name,Last_name,Birthday,From,To,Via,Reg_num).
@@ -60,12 +59,13 @@ airline(Name,From_IATA,To_IATA) :-
     flight_leg(From_IATA,To_IATA,Name,Aircraft).
 
 flight_leg(From_IATA,To_IATA,Operator,Aircraft_reg_num) :- 
+    flight_leg(From_IATA,To_IATA,Operator,Aircraft_reg_num),
     aircraft(Aircraft_reg_num,Some_model,Some_Manufactor,Some_classification),
     airline(Operator,From_IATA,To_IATA).
 
-route(From, Airline, To) :- flight_leg(From, To, Airline, Some_aircraft).
-route(From, Airline, To) :-
-route(From, Airline, Stopover),
+route(From, To, Airline) :- flight_leg(From, To, Airline, Some_aircraft).
+route(From, To, Airline) :-
+route(From, Stopover, Airline),
 flight_leg(Stopover, To, Airline, Some_aircraft).
 
 aircraft(Reg_num,Model,Manufactor,Classification) :- 
@@ -80,21 +80,63 @@ aircraft_model(Model,Aircraft_seat) :-
 reservation(Booking_code,P_firstname,P_lastname,P_birthday,From_IATA,To_IATA,Via_Airline,Seat_Num) :-
     reservation(Booking_code,P_firstname,P_lastname,P_birthday,From_IATA,To_IATA,Via_Airline,Seat_Num),
     passenger(P_firstname,P_lastname,P_birthday),
-    flight_leg(From_IATA,To_IATA,Via_Airline,Aircraft_reg_num),
+    route(From_IATA,To_IATA,Via_Airline),
     seat(Seat_Num,Class,Type).
 
-allowedAirport(AllowedAirport,P_firstname,P_lastname,P_birthday) :-
+allowed_airports(AllowedAirport,P_firstname,P_lastname,P_birthday) :-
     airport(AllowedAirport,City_Name,Weather),
     passenger(P_firstname,P_lastname,P_birthday),
     city(City_Name,Country),
     passport(Country,P_firstname,P_lastname,P_birthday).
 
-allowedAirport(AllowedAirport,P_firstname,P_lastname,P_birthday) :-
+allowed_airports(AllowedAirport,P_firstname,P_lastname,P_birthday) :-
     airport(AllowedAirport,City_Name,Weather),
     passenger(P_firstname,P_lastname,P_birthday),
     city(City_Name,Country_Airport),
     passport(Country_Pass,P_firstname,P_lastname,P_birthday),
     visa_agreement(Country_Airport,Country_Pass).
 
-illegalReservation(P_firstname,P_lastname,P_birthday,NotAllowedIn) :-
-    
+illegal_reservations(P_firstname,P_lastname,P_birthday,To_Country) :-
+    reservation(Booking_code,P_firstname,P_lastname,P_birthday,From_IATA,To_IATA,Via_Airline,Seat_Num),
+    airport(From_IATA,From_City,From_Weather),
+    city(From_City,From_Country),
+    airport(To_IATA,To_City,To_Weather),
+    city(To_City,To_Country),
+    not passport(To_Country,P_firstname,P_lastname,P_birthday),
+    not visa_agreement(To_Country,From_Country).
+
+illegal_reservations(P_firstname,P_lastname,P_birthday,NotAllowedIn) :-
+    reservation(Booking_code,P_firstname,P_lastname,P_birthday,From_IATA,NotAllowedIn,Via_Airline,Seat_Num),
+    airport(From_IATA,From_City,Weather),
+    city(From_City,From_Country),
+    airport(To_IATA,To_City,Weather),
+    city(To_City,To_Country),
+    blacklist(From_Country,To_Country).
+
+double_bookings(Booking_code1,Booking_code2, Aircraft_reg_num) :-
+    reservation(Booking_code1,P1_firstname,P1_lastname,P1_birthday,From_IATA1,To_IATA1,Via_Airline,Seat_Num),
+    reservation(Booking_code2,P2_firstname,P2_lastname,P2_birthday,From_IATA2,To_IATA2,Via_Airline,Seat_Num),
+    flight_leg(From_IATA1,To_IATA1,Via_Airline,Aircraft_reg_num),
+    flight_leg(From_IATA2,To_IATA2,Via_Airline,Aircraft_reg_num),
+    P1_firstname != P2_firstname.
+
+double_bookings(Booking_code1,Booking_code2, Aircraft_reg_num) :-
+    reservation(Booking_code1,P1_firstname,P1_lastname,P1_birthday,From_IATA1,To_IATA1,Via_Airline,Seat_Num),
+    reservation(Booking_code2,P2_firstname,P2_lastname,P2_birthday,From_IATA2,To_IATA2,Via_Airline,Seat_Num),
+    flight_leg(From_IATA1,To_IATA1,Via_Airline,Aircraft_reg_num),
+    flight_leg(From_IATA2,To_IATA2,Via_Airline,Aircraft_reg_num),
+    P1_lastname != P2_lastname.
+
+double_bookings(Booking_code1,Booking_code2, Aircraft_reg_num) :-
+    reservation(Booking_code1,P1_firstname,P1_lastname,P1_birthday,From_IATA1,To_IATA1,Via_Airline,Seat_Num),
+    reservation(Booking_code2,P2_firstname,P2_lastname,P2_birthday,From_IATA2,To_IATA2,Via_Airline,Seat_Num),
+    flight_leg(From_IATA1,To_IATA1,Via_Airline,Aircraft_reg_num),
+    flight_leg(From_IATA2,To_IATA2,Via_Airline,Aircraft_reg_num),
+    P1_birthday != P2_birthday.
+
+permitted_takeoff(From_IATA,To_IATA,Aircraft_reg_num) :-
+    flight_leg(From_IATA,To_IATA,Via_Airline,Aircraft_reg_num),
+    not double_bookings(code1,code2,Aircraft_reg_num),
+    aircraft(Aircraft_reg_num,Model,Manufactor,Classification),
+    .
+
