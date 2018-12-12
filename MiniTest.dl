@@ -9,17 +9,16 @@ aircraft_model("Airbus A380","2A").
 aircraft_model("Airbus A380","2B").
 seat("1A","Business","Aisle").
 seat("1B","Business","Window").
-seat("2A","Economy","Aisle").
-seat("2B","Economy","Window").
 country("Denmark").
 country("Sweden").
 city("Stockholm","Sweden").
 city("Copenhagen","Denmark").
 airport("CPH","Copenhagen","Cloudy").
 airport("STO","Stockholm","Windy").
-flight_leg("CPH","STO","Norwegian","OY-JdO").
-reservation("412","Patrick","Alminde","18-05-96","CPH","STO","Norwegian","7A").
-reservation("512","Gry","Egelund","11-12-96","CPH","STO","Norwegian","8A").
+flight_leg("CPH","STO","Norwegian","OY-JJO").
+reservation("412","Patrick","Alminde","18-05-96","CPH","STO","Norwegian","3A").
+visa_agreement("Denmark","Sweden").
+reservation("512","Gry","Egelund","11-12-96","CPH","STO","Norwegian","1B").
 
 passenger(First_name,Last_name,Birthday) :-
     reservation(Code,First_name,Last_name,Birthday,From,To,Via,Reg_num).
@@ -31,7 +30,7 @@ blacklist(Banning_Country,Banned_Country) :-
     Banning_Country!=Banned_Country.
 
 visa_agreement(Country_one,Country_two) :-
-    visa_agreement(Country_one,Country_two),
+    visa_agreement(Country_two,Country_one),
     country(Country_one),
     country(Country_two).
 
@@ -87,14 +86,17 @@ allowed_airports(AllowedAirport,P_firstname,P_lastname,P_birthday) :-
     airport(AllowedAirport,City_Name,Weather),
     passenger(P_firstname,P_lastname,P_birthday),
     city(City_Name,Country),
-    passport(Country,P_firstname,P_lastname,P_birthday).
+    allowed_to_travel(From_Country,Country,P_firstname,P_lastname,P_birthday).
 
-allowed_airports(AllowedAirport,P_firstname,P_lastname,P_birthday) :-
-    airport(AllowedAirport,City_Name,Weather),
+allowed_to_travel(From_country,To_country,P_firstname,P_lastname,P_birthday) :-
+    passport(To_country,P_firstname,P_lastname,P_birthday),
+    country(From_country),
+    not blacklist(To_country,From_country).
+
+allowed_to_travel(From_country,To_country,P_firstname,P_lastname,P_birthday) :-
+    visa_agreement(From_country,To_country),
     passenger(P_firstname,P_lastname,P_birthday),
-    city(City_Name,Country_Airport),
-    passport(Country_Pass,P_firstname,P_lastname,P_birthday),
-    visa_agreement(Country_Airport,Country_Pass).
+    not blacklist(To_country,From_country).
 
 illegal_reservations(P_firstname,P_lastname,P_birthday,To_Country) :-
     reservation(Booking_code,P_firstname,P_lastname,P_birthday,From_IATA,To_IATA,Via_Airline,Seat_Num),
@@ -137,6 +139,92 @@ double_bookings(Booking_code1,Booking_code2, Aircraft_reg_num) :-
 permitted_takeoff(From_IATA,To_IATA,Aircraft_reg_num) :-
     flight_leg(From_IATA,To_IATA,Via_Airline,Aircraft_reg_num),
     not double_bookings(code1,code2,Aircraft_reg_num),
+    weather_within_limits_to(From_IATA,To_IATA,Via_Airline,Aircraft_reg_num),
+    weather_within_limits_from(From_IATA,To_IATA,Via_Airline,Aircraft_reg_num),
+    not disqualified_passenger(To_IATA).
+
+weather_within_limits_to(From_IATA,To_IATA,Via_Airline,Aircraft_reg_num) :-
+    flight_leg(From_IATA,To_IATA,Via_Airline,Aircraft_reg_num),
     aircraft(Aircraft_reg_num,Model,Manufactor,Classification),
-    .
+    Classification="Light",
+    airport(To_IATA,To_City,To_Weather),
+    To_Weather != "Thunderstorm",
+    To_Weather != "Windy".
+
+weather_within_limits_to(From_IATA,To_IATA,Via_Airline,Aircraft_reg_num) :-
+    flight_leg(From_IATA,To_IATA,Via_Airline,Aircraft_reg_num),
+    aircraft(Aircraft_reg_num,Model,Manufactor,Classification),
+    Classification="Heavy",
+    airport(To_IATA,To_City,To_Weather),
+    To_Weather != "Thunderstorm".
+
+weather_within_limits_from(From_IATA,To_IATA,Via_Airline,Aircraft_reg_num) :-
+    flight_leg(From_IATA,To_IATA,Via_Airline,Aircraft_reg_num),
+    aircraft(Aircraft_reg_num,Model,Manufactor,Classification),
+    Classification="Light",
+    airport(From_IATA,From_City,From_Weather),
+    From_Weather != "Thunderstorm",
+    From_Weather != "Windy".
+
+weather_within_limits_from(From_IATA,To_IATA,Via_Airline,Aircraft_reg_num) :-
+    flight_leg(From_IATA,To_IATA,Via_Airline,Aircraft_reg_num),
+    aircraft(Aircraft_reg_num,Model,Manufactor,Classification),
+    Classification="Heavy",
+    airport(From_IATA,From_City,From_Weather),
+    From_Weather != "Thunderstorm".
+
+
+disqualified_passenger(To_IATA) :-
+    airport(To_IATA,City,Weather),
+    reservation(Booking_code,P_firstname,P_lastname,P_birthday,From_IATA,To_IATA,Via_Airline,Seat_Num),
+    not allowed_airports(To_IATA,P_firstname,P_lastname,P_birthday).
+
+closed_airport(IATA) :-
+    airport(IATA,City,Weather),
+    not open_airport(IATA).
+
+open_airport(From_IATA) :-
+    flight_leg(From_IATA,To_IATA,Via_Airline,Aircraft_reg_num),
+    weather_within_limits_from(From_IATA,To_IATA,Via_Airline,Aircraft_reg_num).
+
+open_airport(To_IATA) :-
+    flight_leg(From_IATA,To_IATA,Via_Airline,Aircraft_reg_num),
+    weather_within_limits_to(From_IATA,To_IATA,Via_Airline,Aircraft_reg_num).
+
+bookable_flight(From_IATA,To_IATA,P_firstname,P_lastname,P_birthday) :-
+    passenger(P_firstname,P_lastname,P_birthday),
+    route(From_IATA,To_IATA,Via_Airline),
+    not disqualified_route(From_IATA,To_IATA,Via_Airline, P_firstname, P_lastname, P_birthday).
+
+disqualified_route(From_IATA,To_IATA,Via_Airline, P_firstname, P_lastname, P_birthday) :-
+    flight_leg(From_IATA,To_IATA,Via_Airline,Aircraft_reg_num),
+    passenger(P_firstname,P_lastname,P_birthday),
+    not allowed_airports(To_IATA,P_firstname,P_lastname,P_birthday).
+
+disqualified_route(From_IATA,To_IATA,Via_Airline, P_firstname, P_lastname, P_birthday) :-
+    flight_leg(From_IATA,To_IATA,Via_Airline,Aircraft_reg_num),
+    passenger(P_firstname,P_lastname,P_birthday),
+    not empty_seat(From_IATA,To_IATA,Via_Airline,Aircraft_reg_num).
+
+disqualified_route(From_IATA,To_IATA,Via_Airline, P_firstname, P_lastname, P_birthday) :-
+    disqualified_route(From_IATA,Stopover,Via_Airline, P_firstname, P_lastname, P_birthday),
+    flight_leg(Stopover,To_IATA,Via_Airline,Aircraft_reg_num),
+    passenger(P_firstname,P_lastname,P_birthday),
+    not allowed_airports(To_IATA,P_firstname,P_lastname,P_birthday).
+
+disqualified_route(From_IATA,To_IATA,Via_Airline, P_firstname, P_lastname, P_birthday) :-
+    disqualified_route(From_IATA,Stopover,Via_Airline, P_firstname, P_lastname, P_birthday),
+    flight_leg(Stopover,To_IATA,Via_Airline,Aircraft_reg_num),
+    not empty_seat(From_IATA,To_IATA,Via_Airline,Aircraft_reg_num).
+
+empty_seat(From_IATA,To_IATA,Via_Airline,Aircraft_reg_num) :-
+    seat(Seat_Num,Class,Type),
+    flight_leg(From_IATA,To_IATA,Via_Airline,Aircraft_reg_num),
+    aircraft(Aircraft_reg_num,Model,Manufactor,Classification),
+    not reserved_seat(Seat_Num).
+
+reserved_seat(Seat_Num) :-
+    reservation(Booking_code,P_firstname,P_lastname,P_birthday,From_IATA,To_IATA,Via_Airline,Seat_Num).
+
+
 
