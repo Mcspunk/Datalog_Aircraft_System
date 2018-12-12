@@ -1,0 +1,237 @@
+% Patrick Alminde Palmin15@student.aau.dk - Student Num. 20155669 ENGINE: DLV
+
+
+% Assumptions and Choices: 
+% 1. Some entities from the assignment are left out because
+%    i deemed them unneasecary in order to compute the problems eg. Itinerary
+% 2. Choose to introduce a person with a social security number to identiy passengers
+%    to reduces the amount of rules and terms needed in some rules and facts
+
+% Different facts that have been used to test the program.
+aircraft("OY-JJO","Airbus A380", "Airbus", "Heavy").
+aircraft("ME-ONE","Boring 770", "Boring", "Heavy").
+aircraft("MY-DAD","Boring 100", "Boring", "Light").
+aircraft_model("Airbus A380","1H").
+aircraft_model("Airbus A380","1G").
+aircraft_model("Boring 770","1A").
+seat("1A","Business","Aisle").
+seat("1B","Business","Window").
+seat("1H","Business","Aisle").
+seat("1G","Business","Window").
+city("London","Britain").
+city("Stockholm","Sweden").
+city("Copenhagen","Denmark").
+airport("UK","London","Windy").
+airport("CPH","Copenhagen","Cloudy").
+airport("STO","Stockholm","Windy").
+flight_leg("CPH","STO","Norwegian","OY-JJO").
+flight_leg("STO","UK","Norwegian","ME-ONE").
+visa_agreement("Denmark","Sweden").
+blacklist("Sweden","Denmark").
+passport("Britain","1234").
+passport("Denmark","4321").
+reservation("412","1234","CPH","STO","Norwegian","1L").
+reservation("512","4321","CPH","STO","Norwegian","1G").
+person("Patrick","Alminde","18-05-96","1234").
+person("Gry","Egelund","11-12-96","4321").
+
+% A passenger with a social-security-number(SSN) exists 
+% if a reservation exists alongside a person
+passenger(P_SSN) :-
+    reservation(Code,P_SSN,From,To,Via,Reg_num),
+    person(FirstName,LastName,Birthday,P_SSN).
+
+% A visa agreement is dualsided, so if a fact exists in EDB from denmark to sweden
+% another is in the IDB from sweden to denmark
+visa_agreement(From_Country,To_Country) :-
+    visa_agreement(To_Country,From_Country).
+
+% A country exists if a city fact is made with it
+country(Country_Name) :-
+    city(City_Name,Country_Name).
+
+% A airline company is infered if two airports exists, and a flight_leg is connecting them
+airline(Name,From_IATA,To_IATA) :-
+    airport(From_IATA,X,Y),
+    airport(To_IATA,H,G),
+    flight_leg(From_IATA,To_IATA,Name,Aircraft).
+
+% Inspired by the path exercise. A route from x to z exists if a flight leg from x to z exists.
+% But a route from x to z also exists if a flight leg from x to y exists and one from y to z exists.
+% route is handled by same airline, but could be different.
+route(From, To, Airline) :- flight_leg(From, To, Airline, Some_aircraft).
+route(From, To, Airline) :-
+route(From, Stopover, Airline),
+flight_leg(Stopover, To, Airline, Some_aircraft).
+
+% Solution to assignment 3.
+% A passenger(P_SSN) is allowed to fly to(AllowedAirport)
+% if there exists an allowed_to_travel to some country for P_SSN.
+% And there is a city associated with that country, and an airport associated with that city.
+allowed_airports(AllowedAirport,P_SSN) :-
+    airport(AllowedAirport,City_Name,Weather),
+    passenger(P_SSN),
+    city(City_Name,Country),
+    allowed_to_travel(Country,P_SSN).
+
+% Rule that states a passenger is allowed to travel to a country
+% if the passenger has a passport issued in that country.
+allowed_to_travel(To_country,P_SSN) :-
+    passport(To_country,P_SSN).
+% OR a passenger is allowed to travel to a country
+% if a country has a visa agreement with a country from which he owns a passport
+% and no blacklist blocks the passport
+allowed_to_travel(To_country,P_SSN) :-
+    visa_agreement(From_country,To_country),
+    allowed_to_travel(From_country,P_SSN),
+    not blacklist(To_country,From_country).
+
+% Solution to assignment 4.
+% An illegal reservation exists if there exists NO allowed_to_travel
+% for a passenger in a reservation to a country
+illegal_reservations(P_SSN,To_Country) :-
+    reservation(Booking_code,P_SSN,From_IATA,To_IATA,Via_Airline,Seat_Num),
+    airport(To_IATA,To_City,To_Weather),
+    city(To_City,To_Country),
+    not allowed_to_travel(To_Country,P_SSN).
+
+% Solution to assignment 5.
+% For two different passengers P_SSN_1 and P_SSN_2 there exists reservation
+% Where the same Seat_Num is reserved on the same flight_leg.
+double_bookings(Booking_code1,Booking_code2,Aircraft_reg_num) :-
+    reservation(Booking_code1,P_SSN_1,From_IATA1,To_IATA1,Via_Airline,Seat_Num),
+    reservation(Booking_code2,P_SSN_2,From_IATA1,To_IATA1,Via_Airline,Seat_Num),
+    flight_leg(From_IATA1,To_IATA1,Via_Airline,Aircraft_reg_num),
+    P_SSN_1 != P_SSN_2.
+
+% Solution to assignment 6.
+% For a given flight_leg it is permitted to takeoff if the registation number
+% is NOT existing in a double_bookings fact.
+% AND weather is within limits in both associated airports for the flight.
+% AND there exists no disqualified passengers
+permitted_takeoff(From_IATA,To_IATA,Aircraft_reg_num) :-
+    flight_leg(From_IATA,To_IATA,Via_Airline,Aircraft_reg_num),
+    not double_bookings(code1,code2,Aircraft_reg_num),
+    weather_within_limits_to(From_IATA,To_IATA,Via_Airline,Aircraft_reg_num),
+    weather_within_limits_from(From_IATA,To_IATA,Via_Airline,Aircraft_reg_num),
+    not disqualified_passenger(From_IATA,To_IATA,Via_Airline).
+
+% The weather is within limits in the arriving airport in the case that
+% the aircraft is Light and the weahter is neither Thunderstorm nor Windy
+weather_within_limits_to(From_IATA,To_IATA,Via_Airline,Aircraft_reg_num) :-
+    flight_leg(From_IATA,To_IATA,Via_Airline,Aircraft_reg_num),
+    aircraft(Aircraft_reg_num,Model,Manufactor,Classification),
+    Classification="Light",
+    airport(To_IATA,To_City,To_Weather),
+    To_Weather != "Thunderstorm",
+    To_Weather != "Windy".
+
+% OR The weather is within limits in the arriving airport in the case that
+% the aircraft is Heavy and the weahter is NOT Thunderstorm
+weather_within_limits_to(From_IATA,To_IATA,Via_Airline,Aircraft_reg_num) :-
+    flight_leg(From_IATA,To_IATA,Via_Airline,Aircraft_reg_num),
+    aircraft(Aircraft_reg_num,Model,Manufactor,Classification),
+    Classification="Heavy",
+    airport(To_IATA,To_City,To_Weather),
+    To_Weather != "Thunderstorm".
+
+% Same as the weather_within_limits_to rules
+% These rules can be combined to check for both conditions
+weather_within_limits_from(From_IATA,To_IATA,Via_Airline,Aircraft_reg_num) :-
+    flight_leg(From_IATA,To_IATA,Via_Airline,Aircraft_reg_num),
+    aircraft(Aircraft_reg_num,Model,Manufactor,Classification),
+    Classification="Light",
+    airport(From_IATA,From_City,From_Weather),
+    From_Weather != "Thunderstorm",
+    From_Weather != "Windy".
+
+weather_within_limits_from(From_IATA,To_IATA,Via_Airline,Aircraft_reg_num) :-
+    flight_leg(From_IATA,To_IATA,Via_Airline,Aircraft_reg_num),
+    aircraft(Aircraft_reg_num,Model,Manufactor,Classification),
+    Classification="Heavy",
+    airport(From_IATA,From_City,From_Weather),
+    From_Weather != "Thunderstorm".
+
+% a passenger is disqualified if a reservation is made for a flightleg
+% and the passenger is not allowed in the arriving airport
+disqualified_passenger(From_IATA,To_IATA,Via_Airline) :-
+    airport(To_IATA,City,Weather),
+    reservation(Booking_code,P_SSN,From_IATA,To_IATA,Via_Airline,Seat_Num),
+    not allowed_airports(To_IATA,P_SSN).
+
+% Solution to assignment 7.
+% An airport is close if there is an airport with an IATA
+% and the IATA is not in the open_airport facts.
+closed_airport(IATA) :-
+    airport(IATA,City,Weather),
+    not open_airport(IATA).
+
+% An airport is open if there exists a flight leg from it,
+% and the weahter is within the limits to leave the airport for the flightleg
+open_airport(From_IATA) :-
+    flight_leg(From_IATA,To_IATA,Via_Airline,Aircraft_reg_num),
+    weather_within_limits_from(From_IATA,To_IATA,Via_Airline,Aircraft_reg_num).
+
+% An airport is also open if there exists a flight_leg to it,
+% and the weather is within limits for the plane of the flightleg to arrive at the airport.
+open_airport(To_IATA) :-
+    flight_leg(From_IATA,To_IATA,Via_Airline,Aircraft_reg_num),
+    weather_within_limits_to(From_IATA,To_IATA,Via_Airline,Aircraft_reg_num).
+
+% Solution to assignment 8.
+% A passenger is able to make a reservation From X to Y
+% If there exists a route from X to Y and NO disqualified route exists.
+bookable_flight(From_IATA,To_IATA,P_SSN) :-
+    passenger(P_SSN),
+    route(From_IATA,To_IATA,Via_Airline),
+    not disqualified_route(From_IATA,To_IATA,Via_Airline,P_SSN).
+
+% A disqualified route exists if a flight leg exists, and a passenger, but
+% the passenger is not allowed in the airport which the flightleg is arriving at.
+disqualified_route(From_IATA,To_IATA,Via_Airline,P_SSN) :-
+    flight_leg(From_IATA,To_IATA,Via_Airline,Aircraft_reg_num),
+    passenger(P_SSN),
+    not allowed_airports(To_IATA,P_SSN).
+
+% Or it exists if there is no empty seats available for the passenger on the flight leg.
+disqualified_route(From_IATA,To_IATA,Via_Airline,P_SSN) :-
+    flight_leg(From_IATA,To_IATA,Via_Airline,Aircraft_reg_num),
+    passenger(P_SSN),
+    not empty_seat(From_IATA,To_IATA,Via_Airline,Aircraft_reg_num).
+
+% also exists if some the head partial part of the route is disqualified: will check recursively.
+disqualified_route(From_IATA,To_IATA,Via_Airline,P_SSN) :-
+    disqualified_route(From_IATA,Stopover,Via_Airline,P_SSN),
+    flight_leg(Stopover,To_IATA,Via_Airline,Aircraft_reg_num).
+
+% or if the last partial part of the route is disqualified: will check recursively.
+disqualified_route(From_IATA,To_IATA,Via_Airline,P_SSN) :-
+    disqualified_route(Stopover,To_IATA,Via_Airline,P_SSN),
+    flight_leg(From_IATA,Stopover,Via_Airline,Aircraft_reg_num).
+    
+% an empty seat exists if some seat exists and no reservation exists with this seat number
+empty_seat(From_IATA,To_IATA,Via_Airline,Aircraft_reg_num) :-
+    seat(Seat_Num,Class,Type),
+    flight_leg(From_IATA,To_IATA,Via_Airline,Aircraft_reg_num),
+    aircraft(Aircraft_reg_num,Model,Manufactor,Classification),
+    aircraft_model(Model,Seat_Num),
+    not reserved_seat(Seat_Num).
+% A seat is reserved if a reservation exists with the seat number
+reserved_seat(Seat_Num) :-
+    reservation(Booking_code,P_SSN,From_IATA,To_IATA,Via_Airline,Seat_Num).
+
+% Solution to assignment 9
+% Works similary to assignment 3 but uses disqualified entrance to check
+% for all passports of a citizen(dual citizenship)
+strict_allowed_airports(AllowedAirport,P_SSN) :-
+    airport(AllowedAirport,City_Name,Weather),
+    passenger(P_SSN),
+    city(City_Name,Country),
+    not disqualified_entrance(Country,P_SSN).
+
+disqualified_entrance(Country,P_SSN) :-
+    country(Country),
+    country(From_Country),
+    passenger(P_SSN),
+    From_Country != Country,
+    not allowed_to_travel(Country,P_SSN).
