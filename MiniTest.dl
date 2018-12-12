@@ -1,23 +1,29 @@
 
 aircraft("OY-JJO","Airbus A380", "Airbus", "Heavy").
-aircraft("OV-KKY","Airbus A380", "Airbus", "Heavy").
 aircraft("ME-ONE","Boring 770", "Boring", "Heavy").
 aircraft("MY-DAD","Boring 100", "Boring", "Light").
 aircraft_model("Airbus A380","1A").
 aircraft_model("Airbus A380","1B").
-aircraft_model("Airbus A380","2A").
-aircraft_model("Airbus A380","2B").
+aircraft_model("Boring 770","1H").
+aircraft_model("Boring 770","1G").
 seat("1A","Business","Aisle").
 seat("1B","Business","Window").
+seat("1H","Business","Aisle").
+seat("1G","Business","Window").
 country("Denmark").
 country("Sweden").
+country("Britain").
+city("London","Britain").
 city("Stockholm","Sweden").
 city("Copenhagen","Denmark").
+airport("UK","London","Windy").
 airport("CPH","Copenhagen","Cloudy").
 airport("STO","Stockholm","Windy").
 flight_leg("CPH","STO","Norwegian","OY-JJO").
-reservation("412","Patrick","Alminde","18-05-96","CPH","STO","Norwegian","3A").
+flight_leg("STO","UK","Norwegian","ME-ONE").
 visa_agreement("Denmark","Sweden").
+passport("Britain","Patrick","Alminde","18-05-96").
+reservation("412","Patrick","Alminde","18-05-96","CPH","STO","Norwegian","7H").
 reservation("512","Gry","Egelund","11-12-96","CPH","STO","Norwegian","1B").
 
 passenger(First_name,Last_name,Birthday) :-
@@ -173,7 +179,6 @@ weather_within_limits_from(From_IATA,To_IATA,Via_Airline,Aircraft_reg_num) :-
     airport(From_IATA,From_City,From_Weather),
     From_Weather != "Thunderstorm".
 
-
 disqualified_passenger(To_IATA) :-
     airport(To_IATA,City,Weather),
     reservation(Booking_code,P_firstname,P_lastname,P_birthday,From_IATA,To_IATA,Via_Airline,Seat_Num),
@@ -221,6 +226,7 @@ empty_seat(From_IATA,To_IATA,Via_Airline,Aircraft_reg_num) :-
     seat(Seat_Num,Class,Type),
     flight_leg(From_IATA,To_IATA,Via_Airline,Aircraft_reg_num),
     aircraft(Aircraft_reg_num,Model,Manufactor,Classification),
+    aircraft_model(Model,Seat_Num),
     not reserved_seat(Seat_Num).
 
 reserved_seat(Seat_Num) :-
